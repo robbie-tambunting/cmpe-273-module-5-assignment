@@ -25,6 +25,9 @@ def crash(point, event_id):
 
 
 def make_callback(work_seconds, crash_at):
+    # In-memory event deduplication ids
+    processed_ids = set()
+
     def on_message(channel, method, properties, body):
         redelivered = method.redelivered
         try:
@@ -41,6 +44,17 @@ def make_callback(work_seconds, crash_at):
             "received event_id=%s order_id=%s redelivered=%s",
             order["event_id"], order["order_id"], redelivered,
         )
+
+        if order["event_id"] in processed_ids:
+            # Skip the business action but still ack, so the broker deletes the copy
+            log.warning(
+                "DUPLICATE event_id=%s order_id=%s redelivered=%s, skipping business action",
+                order["event_id"], order["order_id"], redelivered,
+            )
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            log.info("acked event_id=%s (duplicate)", order["event_id"])
+            return
+
         if crash_at == "received":  # nothing done yet
             crash("received", order["event_id"])
 
@@ -51,6 +65,8 @@ def make_callback(work_seconds, crash_at):
         )
         if crash_at == "processed":  # work done, but the broker never hears about it
             crash("processed", order["event_id"])
+
+        processed_ids.add(order["event_id"])
 
         # Ack LAST: only now is it safe for the broker to delete the message.
         channel.basic_ack(delivery_tag=method.delivery_tag)
