@@ -1,0 +1,4 @@
+19:27:37 [producer] published event_id=cfef3c56-eedb-4cbb-811c-ba3836e922c0 order_id=100 item_id=item-17 quantity=1
+19:27:37 [producer] published event_id=6143db9d-cf63-4f84-a164-2e41e1fb3474 order_id=101 item_id=item-15 quantity=5
+19:27:37 [producer] published event_id=35631122-0ce3-4438-b375-2f7d356ceab7 order_id=102 item_id=item-4 quantity=2
+19:27:37 [producer] done, published 3 message(s)

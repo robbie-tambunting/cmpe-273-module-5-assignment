@@ -1,0 +1,2 @@
+before publishing:    ready=0 unacked=0 consumers=2
+after the crash+drain: ready=0 unacked=0 consumers=1

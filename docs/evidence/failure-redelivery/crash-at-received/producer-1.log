@@ -1,0 +1,6 @@
+19:27:34 [producer] published event_id=6aee93fc-11b3-450a-be05-4c1851d98160 order_id=1 item_id=item-15 quantity=1
+19:27:34 [producer] published event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa order_id=2 item_id=item-18 quantity=4
+19:27:34 [producer] published event_id=e47c68e1-dad8-4cd5-a7f3-9e043e81b0af order_id=3 item_id=item-4 quantity=3
+19:27:34 [producer] published event_id=5e5b3dce-7ac6-45f9-8a8a-ca629438400d order_id=4 item_id=item-1 quantity=3
+19:27:34 [producer] published event_id=11e349ec-470b-4996-9dc3-3f489b6d6792 order_id=5 item_id=item-13 quantity=5
+19:27:34 [producer] done, published 5 message(s)
