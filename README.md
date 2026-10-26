@@ -2,6 +2,24 @@
 
 A producer publishes order events to a RabbitMQ queue. Worker processes consume them, acknowledging each message after processing.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    P["Order Producer<br/>producer.py"] -->|"publish<br/>routing key: orders<br/>persistent message"| X["Default exchange"]
+    X --> Q[("orders queue<br/>durable")]
+    Q -->|"deliver<br/>prefetch 1"| A["Worker A<br/>worker.py<br/>in-memory event_id set"]
+    Q -->|"deliver<br/>prefetch 1"| B["Worker B<br/>worker.py<br/>in-memory event_id set"]
+    A -.->|"ack after processing"| Q
+    B -.->|"ack after processing"| Q
+```
+
+- The producer and the workers are separate processes. They only communicate through RabbitMQ.
+- The producer publishes to the default exchange, which routes each message to the `orders` queue by name.
+- Both workers consume from the same queue. Each message is delivered to only one of them (competing consumers).
+- A message stays in the queue, as unacked, until the worker that received it acks it. If that worker dies first, RabbitMQ delivers the message to the other worker with `redelivered=True`.
+- Each worker skips an `event_id` it has already processed, and acks the repeated message without doing the work again.
+
 ## Setup
 
 Requires Docker and Python 3.10+. Run everything from the project root.
