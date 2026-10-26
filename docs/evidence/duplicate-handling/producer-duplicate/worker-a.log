@@ -1,0 +1,7 @@
+13:22:07 [worker A pid=56896] waiting for messages on queue=orders (Ctrl+C to stop)
+13:22:13 [worker A pid=56896] received event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False
+13:22:13 [worker A pid=56896] processed event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 item_id=item-14 quantity=1
+13:22:13 [worker A pid=56896] acked event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13
+13:22:17 [worker A pid=56896] received event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False
+13:22:17 [worker A pid=56896] DUPLICATE event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False, skipping business action
+13:22:17 [worker A pid=56896] acked event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 (duplicate)
