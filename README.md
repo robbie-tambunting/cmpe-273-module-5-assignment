@@ -2,21 +2,56 @@
 
 A producer publishes order events to a RabbitMQ queue. Worker processes consume them, acknowledging each message after processing.
 
+## Setup
+
+Requires Docker and Python 3.10+. Run everything from the project root.
+
+```
+docker compose up -d                   # starts RabbitMQ
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+RabbitMQ listens for AMQP on port 5672. The management UI is at http://localhost:15672 (login `guest` / `guest`). `docker compose ps` should show the container as `healthy` before you start.
+
+The producer and workers are separate processes. Each one runs in its own terminal with the venv active.
+
+| Command | What it does |
+|---|---|
+| `python -u producer.py --num-messages N` | Publishes N new order events (default 10). `--start-order-id` sets the first `order_id`. |
+| `python -u producer.py --event-id <id> --order-id <n>` | Publishes exactly one event with that `event_id`. Cannot be combined with `--num-messages`. |
+| `python -u worker.py --name A` | Starts a worker. `--sleep S` sets the simulated work time per message (default 1). |
+| `python -u worker.py --name A --crash-at received` | Failure injection: the worker exits without acking right after it receives a message. |
+
+Logs go to stderr. To save one to a file as well, append `2>&1 | tee <file>`.
+
 ## Competing consumers
 
 Two worker processes are attached to the **same** queue (`orders`). RabbitMQ gives each message to only one of them, so the workers share the load instead of each handling every message.
 
 ### How to reproduce
 
-Run each command in its own terminal, from the project root with the venv active. Start both workers and wait for `waiting for messages` before publishing.
+Use three terminals. Start both workers and wait for each to print `waiting for messages` before you publish.
 
 ```
-python -u worker.py --name A --sleep 0.5 2>&1 | tee docs/evidence/competing-consumers/equal/worker-a.log
-python -u worker.py --name B --sleep 0.5 2>&1 | tee docs/evidence/competing-consumers/equal/worker-b.log
-python -u producer.py --num-messages 10 2>&1 | tee docs/evidence/competing-consumers/equal/producer.log
+# terminal 1
+python -u worker.py --name A --sleep 0.5
+# terminal 2
+python -u worker.py --name B --sleep 0.5
+# terminal 3
+python -u producer.py --num-messages 10
 ```
 
-The logs go to stderr, so `2>&1` is needed for `tee` to capture them.
+For the slow/fast run, start the workers with `--sleep 3` (A) and `--sleep 0.2` (B) instead. Open the `orders` queue in the management UI (Queues, then `orders`) to see the Consumers table.
+
+To check that no event was handled by both workers, save each worker's output (`2>&1 | tee a.log` and `2>&1 | tee b.log`) and run:
+
+```
+grep -h ' acked ' a.log b.log | grep -o 'event_id=[^ ]*' | sort | uniq -d
+```
+
+No output means no event was acked twice. The logs below were captured this way.
 
 ### Two consumers on one queue
 
@@ -71,3 +106,92 @@ Both printed nothing. The set of acked `event_id`s also equals the set the produ
 |---|---|---|---|
 | Equal (0.5s / 0.5s) | 5 | 5 | none |
 | Slow/fast (3s / 0.2s) | 1 | 9 | none |
+
+## Failure and redelivery
+
+A worker receives a message and then dies before sending its ACK. RabbitMQ treats the message as not handled and delivers it to another worker.
+
+### How the failure is produced
+
+Worker A is started with `--crash-at received`. Right after it logs `received`, it calls `os._exit(1)`. This ends the process without any cleanup, so the broker sees the connection die as it would in a real crash. Worker B is started without the flag, so the crash depends on the worker and not on the message. B can handle the same message that crashed A.
+
+Use four terminals. Start both workers and wait for `waiting for messages` in each.
+
+```
+# terminal 1: worker B (normal)
+python -u worker.py --name B --sleep 1
+# terminal 2: worker A (will crash)
+python -u worker.py --name A --sleep 1 --crash-at received
+# terminal 3: publish a batch; A crashes on its first message
+python -u producer.py --num-messages 5
+# after the crash, publish more to show the system is still up
+python -u producer.py --num-messages 3 --start-order-id 100
+```
+
+In the management UI, the Consumers table shows 2 consumers before the crash and 1 after it.
+
+> **Where the evidence comes from:** the screenshots are from one run of these steps, and the text logs are from a second run, so the `event_id`s differ. The first run's terminal output was not saved to files.
+
+### 1. Before the crash: two consumers
+
+Both workers are connected to the `orders` queue.
+
+![Consumers (2) on the orders queue, each on its own channel](docs/evidence/failure-redelivery/crash-at-received/consumers-before.png)
+
+### 2. The crash and the redelivery
+
+Left to right in the screenshot: the producer, worker B, and worker A. Worker A receives `b78fdaf1…` (order 2) with `redelivered=False`, logs `CRASH injected`, and exits without acking. Worker B then receives the **same** `event_id` and `order_id` with `redelivered=True`, processes it, and acks it.
+
+![Terminals: worker A crashes on order 2, worker B receives the same event with redelivered=True](docs/evidence/failure-redelivery/crash-at-received/crash-and-redelivery-terminals.png)
+
+The same sequence from the second run's logs ([worker A](docs/evidence/failure-redelivery/crash-at-received/worker-a.log), [worker B](docs/evidence/failure-redelivery/crash-at-received/worker-b.log)):
+
+```
+19:27:34 [worker A pid=37664] received event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa order_id=2 redelivered=False
+19:27:34 [worker A pid=37664] CRASH injected at=received event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa (exiting without ack)
+19:27:35 [worker B pid=37665] received event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa order_id=2 redelivered=True
+19:27:36 [worker B pid=37665] processed event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa order_id=2 item_id=item-18 quantity=4
+19:27:36 [worker B pid=37665] acked event_id=21b83af8-dfce-49be-a38c-cb00f4b4baaa
+```
+
+Worker A's log ends at the `CRASH` line, with no `acked` line. The message was never acknowledged, so the broker put it back in the queue and gave it to B.
+
+### 3. After the crash: one consumer, empty queue
+
+The broker now shows one consumer, and 0 Ready and 0 Unacked. Worker A's connection is gone, and the redelivered message was acked by B, so nothing is left in the queue.
+
+![Queue orders: Consumers 1, Ready 0, Unacked 0](docs/evidence/failure-redelivery/crash-at-received/consumers-after.png)
+
+### 4. The system keeps running
+
+The producer and the broker were not affected, and worker B kept running. After the crash, the producer published three more messages (orders 100 to 102):
+
+![Producer publishing 3 more messages after worker A had crashed](docs/evidence/failure-redelivery/crash-at-received/producer-after-crash.png)
+
+This screenshot shows the producer still publishing after the crash. Worker B handling those messages is shown in the second run's log:
+
+```
+19:27:37 [worker B pid=37665] received event_id=cfef3c56-eedb-4cbb-811c-ba3836e922c0 order_id=100 redelivered=False
+19:27:38 [worker B pid=37665] processed event_id=cfef3c56-eedb-4cbb-811c-ba3836e922c0 order_id=100 item_id=item-17 quantity=1
+19:27:38 [worker B pid=37665] received event_id=6143db9d-cf63-4f84-a164-2e41e1fb3474 order_id=101 redelivered=False
+19:27:38 [worker B pid=37665] processed event_id=6143db9d-cf63-4f84-a164-2e41e1fb3474 order_id=101 item_id=item-15 quantity=5
+19:27:38 [worker B pid=37665] received event_id=35631122-0ce3-4438-b375-2f7d356ceab7 order_id=102 redelivered=False
+19:27:39 [worker B pid=37665] processed event_id=35631122-0ce3-4438-b375-2f7d356ceab7 order_id=102 item_id=item-4 quantity=2
+```
+
+Queue states recorded during the second run ([queue-states.txt](docs/evidence/failure-redelivery/crash-at-received/queue-states.txt)):
+
+```
+before publishing:    ready=0 unacked=0 consumers=2
+after the crash+drain: ready=0 unacked=0 consumers=1
+```
+
+| | Worker A | Worker B |
+|---|---|---|
+| Messages acked | 0 | 8 |
+
+All 8 published events were acked exactly once, including the one that crashed worker A.
+
+### What this shows
+
+When a worker's connection closes while it holds an unacked message, RabbitMQ puts the message back in the queue and marks it `redelivered=True`. The next worker with a free slot receives it. In this run, worker A crashed **before** doing any work (`--crash-at received`), so the order was processed once, by B. If a worker crashed *after* the work but before the ack, the same redelivery would happen and the work would be done twice, which is the duplicate-handling case.
