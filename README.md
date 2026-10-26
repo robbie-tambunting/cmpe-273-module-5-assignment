@@ -26,6 +26,31 @@ The producer and workers are separate processes. Each one runs in its own termin
 
 Logs go to stderr. To save one to a file as well, append `2>&1 | tee <file>`.
 
+## Successful message processing
+
+One producer and one worker, with the worker started after the messages were published. The worker receives each order, logs it, does the work, and acks it.
+
+```
+# terminal 1: publish 5 orders (no worker is running yet)
+python -u producer.py --num-messages 5
+# terminal 2: start the worker afterwards
+python -u worker.py --name A --sleep 1
+```
+
+The producer published all 5 orders at 13:28:01, and the worker did not start until 13:28:17. The messages waited in the queue until the worker connected, so neither process has to be running when the other one is. For each order the worker then logs `received`, `processed`, and `acked`, in that order. The ack is sent last, only after the work is finished. Logs: [producer.log](docs/evidence/successful-processing/producer.log), [worker-a.log](docs/evidence/successful-processing/worker-a.log).
+
+```
+13:28:01 [producer] published event_id=e08cb6bd-cdb5-4a98-afa4-e9af6481540e order_id=1 item_id=item-16 quantity=5
+...
+13:28:17 [worker A pid=60930] received event_id=e08cb6bd-cdb5-4a98-afa4-e9af6481540e order_id=1 redelivered=False
+13:28:18 [worker A pid=60930] processed event_id=e08cb6bd-cdb5-4a98-afa4-e9af6481540e order_id=1 item_id=item-16 quantity=5
+13:28:18 [worker A pid=60930] acked event_id=e08cb6bd-cdb5-4a98-afa4-e9af6481540e
+```
+
+![Producer (right) publishing 5 orders and worker A (left) receiving, processing, and acking each one](docs/evidence/successful-processing/producer-and-worker-terminals.png)
+
+The worker log has 5 `received`, 5 `processed`, and 5 `acked` lines. Every `event_id` the producer published was acked, and no message was redelivered or flagged as a duplicate.
+
 ## Competing consumers
 
 Two worker processes are attached to the **same** queue (`orders`). RabbitMQ gives each message to only one of them, so the workers share the load instead of each handling every message.
