@@ -290,3 +290,12 @@ The set lives inside one worker process, so it protects against duplicates only 
 
 To cover those cases, the record of processed events has to be shared and durable, for example a file with a lock or a database table with a unique constraint on `event_id`, written in the same transaction as the business action.
 
+## Reflection
+
+A message can be delivered more than once because RabbitMQ doesn't remove it from the queue unless it has been acked by a worker. If a worker fails before acking, the message is placed back on the queue and is delivered to another worker with the redelivered flag=True. A message can also be delivered twice if the producer retries publishing the same event twice.
+
+With idempotency, each worker records the event_ids it's processed in a set. When the worker sees a duplicate event, it skips the business logic and sends an ack to RabbitMQ for it to delete the event from the queue.
+
+NOTE: In our case, we have an in-memory set per worker. Say worker A receives Event 1, it will place that event_id in its set. If it fails, the event is never acked and is placed back in the queue. RabbitMQ could then deliver that event to worker B who doesn't have that event_id in the set. Our implementation only catches repeats that reach the same worker.
+
+A shared file or database would be a better implementation to ensure events are deduped across workers.
