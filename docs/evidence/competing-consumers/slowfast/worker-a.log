@@ -1,0 +1,4 @@
+19:10:37 [worker A pid=30282] waiting for messages on queue=orders (Ctrl+C to stop)
+19:10:46 [worker A pid=30282] received event_id=f0712654-dbaa-4b0b-842e-f1506177f77f order_id=1 redelivered=False
+19:10:49 [worker A pid=30282] processed event_id=f0712654-dbaa-4b0b-842e-f1506177f77f order_id=1 item_id=item-19 quantity=4
+19:10:49 [worker A pid=30282] acked event_id=f0712654-dbaa-4b0b-842e-f1506177f77f

@@ -1,0 +1,11 @@
+19:10:46 [producer] published event_id=f0712654-dbaa-4b0b-842e-f1506177f77f order_id=1 item_id=item-19 quantity=4
+19:10:46 [producer] published event_id=4fcc3a0b-418b-45e0-89c2-66bc0c0e2bf6 order_id=2 item_id=item-6 quantity=3
+19:10:46 [producer] published event_id=400faf48-432d-4b91-8360-1ee1384adca1 order_id=3 item_id=item-9 quantity=5
+19:10:46 [producer] published event_id=494764ed-4522-40bb-8a99-007208cd911c order_id=4 item_id=item-10 quantity=2
+19:10:46 [producer] published event_id=b5d008ee-3de0-45bc-965a-e9c4cdcc9657 order_id=5 item_id=item-13 quantity=4
+19:10:46 [producer] published event_id=8740b4f5-645f-4046-950e-3929bb558e90 order_id=6 item_id=item-9 quantity=1
+19:10:46 [producer] published event_id=7889eddc-3026-480a-9873-863d903f7b6d order_id=7 item_id=item-3 quantity=2
+19:10:46 [producer] published event_id=98fd2d89-1986-4f13-9949-65951f42fadc order_id=8 item_id=item-16 quantity=5
+19:10:46 [producer] published event_id=c7b43946-c34e-4e92-b91f-210352a27a6d order_id=9 item_id=item-15 quantity=4
+19:10:46 [producer] published event_id=d41d9171-1a72-4b3c-a741-06b4b6b3da5a order_id=10 item_id=item-13 quantity=2
+19:10:46 [producer] done, published 10 message(s)

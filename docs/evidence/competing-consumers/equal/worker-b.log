@@ -1,0 +1,16 @@
+19:03:03 [worker B pid=24090] waiting for messages on queue=orders (Ctrl+C to stop)
+19:05:00 [worker B pid=24090] received event_id=b46a19b3-ee30-45dd-a3aa-b08343778663 order_id=2 redelivered=False
+19:05:00 [worker B pid=24090] processed event_id=b46a19b3-ee30-45dd-a3aa-b08343778663 order_id=2 item_id=item-12 quantity=4
+19:05:00 [worker B pid=24090] acked event_id=b46a19b3-ee30-45dd-a3aa-b08343778663
+19:05:00 [worker B pid=24090] received event_id=7b10c7bb-4b70-4ad9-8939-977bb20b5a02 order_id=4 redelivered=False
+19:05:01 [worker B pid=24090] processed event_id=7b10c7bb-4b70-4ad9-8939-977bb20b5a02 order_id=4 item_id=item-8 quantity=3
+19:05:01 [worker B pid=24090] acked event_id=7b10c7bb-4b70-4ad9-8939-977bb20b5a02
+19:05:01 [worker B pid=24090] received event_id=257b4724-a1ae-4225-b094-ca804a49f4ab order_id=5 redelivered=False
+19:05:01 [worker B pid=24090] processed event_id=257b4724-a1ae-4225-b094-ca804a49f4ab order_id=5 item_id=item-2 quantity=1
+19:05:01 [worker B pid=24090] acked event_id=257b4724-a1ae-4225-b094-ca804a49f4ab
+19:05:01 [worker B pid=24090] received event_id=14be1c08-8bf9-4ce2-9494-ed873d554ef3 order_id=8 redelivered=False
+19:05:02 [worker B pid=24090] processed event_id=14be1c08-8bf9-4ce2-9494-ed873d554ef3 order_id=8 item_id=item-6 quantity=1
+19:05:02 [worker B pid=24090] acked event_id=14be1c08-8bf9-4ce2-9494-ed873d554ef3
+19:05:02 [worker B pid=24090] received event_id=5e86e93d-7fe0-41b0-874f-e7875e7c5810 order_id=9 redelivered=False
+19:05:02 [worker B pid=24090] processed event_id=5e86e93d-7fe0-41b0-874f-e7875e7c5810 order_id=9 item_id=item-17 quantity=4
+19:05:02 [worker B pid=24090] acked event_id=5e86e93d-7fe0-41b0-874f-e7875e7c5810

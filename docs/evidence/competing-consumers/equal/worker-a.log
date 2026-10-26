@@ -1,0 +1,16 @@
+19:02:55 [worker A pid=23921] waiting for messages on queue=orders (Ctrl+C to stop)
+19:05:00 [worker A pid=23921] received event_id=2d604e2d-c28e-4e64-a65a-36531117f862 order_id=1 redelivered=False
+19:05:00 [worker A pid=23921] processed event_id=2d604e2d-c28e-4e64-a65a-36531117f862 order_id=1 item_id=item-20 quantity=3
+19:05:00 [worker A pid=23921] acked event_id=2d604e2d-c28e-4e64-a65a-36531117f862
+19:05:00 [worker A pid=23921] received event_id=0c265b0d-9365-4787-ac38-84a4e21d3078 order_id=3 redelivered=False
+19:05:01 [worker A pid=23921] processed event_id=0c265b0d-9365-4787-ac38-84a4e21d3078 order_id=3 item_id=item-9 quantity=3
+19:05:01 [worker A pid=23921] acked event_id=0c265b0d-9365-4787-ac38-84a4e21d3078
+19:05:01 [worker A pid=23921] received event_id=8fc30884-1705-46a1-af2a-dcc6aa4ea91c order_id=6 redelivered=False
+19:05:01 [worker A pid=23921] processed event_id=8fc30884-1705-46a1-af2a-dcc6aa4ea91c order_id=6 item_id=item-17 quantity=4
+19:05:01 [worker A pid=23921] acked event_id=8fc30884-1705-46a1-af2a-dcc6aa4ea91c
+19:05:01 [worker A pid=23921] received event_id=34572fce-0c83-490d-ada9-18265b169623 order_id=7 redelivered=False
+19:05:02 [worker A pid=23921] processed event_id=34572fce-0c83-490d-ada9-18265b169623 order_id=7 item_id=item-12 quantity=4
+19:05:02 [worker A pid=23921] acked event_id=34572fce-0c83-490d-ada9-18265b169623
+19:05:02 [worker A pid=23921] received event_id=c43a697f-4cf8-40a4-ba1d-afad911c81e4 order_id=10 redelivered=False
+19:05:02 [worker A pid=23921] processed event_id=c43a697f-4cf8-40a4-ba1d-afad911c81e4 order_id=10 item_id=item-20 quantity=5
+19:05:02 [worker A pid=23921] acked event_id=c43a697f-4cf8-40a4-ba1d-afad911c81e4
