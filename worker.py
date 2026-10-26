@@ -18,7 +18,13 @@ def setup_logging(name):
     )
 
 
-def make_callback(work_seconds):
+def crash(point, event_id):
+    # simulate service/process crash
+    log.error("CRASH injected at=%s event_id=%s (exiting without ack)", point, event_id)
+    os._exit(1)
+
+
+def make_callback(work_seconds, crash_at):
     def on_message(channel, method, properties, body):
         redelivered = method.redelivered
         try:
@@ -35,12 +41,16 @@ def make_callback(work_seconds):
             "received event_id=%s order_id=%s redelivered=%s",
             order["event_id"], order["order_id"], redelivered,
         )
+        if crash_at == "received":  # nothing done yet
+            crash("received", order["event_id"])
 
         time.sleep(work_seconds)  # stand-in for the real business action
         log.info(
             "processed event_id=%s order_id=%s item_id=%s quantity=%s",
             order["event_id"], order["order_id"], order["item_id"], order["quantity"],
         )
+        if crash_at == "processed":  # work done, but the broker never hears about it
+            crash("processed", order["event_id"])
 
         # Ack LAST: only now is it safe for the broker to delete the message.
         channel.basic_ack(delivery_tag=method.delivery_tag)
@@ -53,6 +63,11 @@ def main():
     p = argparse.ArgumentParser(description="Consume and process order events.")
     p.add_argument("--name", default="worker", help="worker name shown in every log line")
     p.add_argument("--sleep", type=float, default=1.0, help="seconds of simulated work per message")
+    p.add_argument(
+        "--crash-at", choices=["received", "processed"],
+        help="failure injection: exit without acking, right after 'received' (before the work) "
+             "or after 'processed' (work done, before the ack). Only this worker crashes.",
+    )
     args = p.parse_args()
     setup_logging(args.name)
 
@@ -62,7 +77,7 @@ def main():
     channel.basic_qos(prefetch_count=1)  # at most 1 unacked message per worker
     channel.basic_consume(
         queue=QUEUE_NAME,
-        on_message_callback=make_callback(args.sleep),
+        on_message_callback=make_callback(args.sleep, args.crash_at),
         auto_ack=False,
     )
 
