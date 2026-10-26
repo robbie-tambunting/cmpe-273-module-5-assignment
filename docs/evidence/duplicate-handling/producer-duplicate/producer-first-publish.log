@@ -1,0 +1,2 @@
+13:22:13 [producer] published event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 item_id=item-14 quantity=1
+13:22:13 [producer] done, published 1 message(s)
