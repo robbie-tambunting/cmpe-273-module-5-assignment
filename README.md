@@ -22,7 +22,7 @@ The producer and workers are separate processes. Each one runs in its own termin
 | `python -u producer.py --num-messages N` | Publishes N new order events (default 10). `--start-order-id` sets the first `order_id`. |
 | `python -u producer.py --event-id <id> --order-id <n>` | Publishes exactly one event with that `event_id`. Cannot be combined with `--num-messages`. |
 | `python -u worker.py --name A` | Starts a worker. `--sleep S` sets the simulated work time per message (default 1). |
-| `python -u worker.py --name A --crash-at received` | Failure injection: the worker exits without acking right after it receives a message. |
+| `python -u worker.py --name A --crash-at received` | Failure injection: the worker exits without acking, either right after it receives a message (`received`) or after the work but before the ack (`processed`). |
 
 Logs go to stderr. To save one to a file as well, append `2>&1 | tee <file>`.
 
@@ -195,3 +195,55 @@ All 8 published events were acked exactly once, including the one that crashed w
 ### What this shows
 
 When a worker's connection closes while it holds an unacked message, RabbitMQ puts the message back in the queue and marks it `redelivered=True`. The next worker with a free slot receives it. In this run, worker A crashed **before** doing any work (`--crash-at received`), so the order was processed once, by B. If a worker crashed *after* the work but before the ack, the same redelivery would happen and the work would be done twice, which is the duplicate-handling case.
+
+## Duplicate handling
+
+Each worker keeps an in-memory set of the `event_id`s it has already processed. When a message arrives with an `event_id` that is in the set, the worker logs `DUPLICATE`, skips the business action, and acks the message so the broker deletes the copy. A new `event_id` is added to the set after the work finishes and before the ack. If the worker crashed before that point, the message is redelivered and the work repeats, so an order is never silently skipped.
+
+### How to reproduce
+
+Use one worker and one producer terminal. Pick any fixed `event_id`; publishing it twice simulates a producer retry.
+
+```
+# terminal 1
+python -u worker.py --name A --sleep 0.5
+# terminal 2, run each command separately
+python -u producer.py --event-id 5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 --order-id 50
+python -u producer.py --event-id 5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 --order-id 50
+```
+
+### The producer sends the same event twice
+
+Both commands publish the same `event_id` and `order_id` ([producer-first-publish.log](docs/evidence/duplicate-handling/producer-duplicate/producer-first-publish.log), [producer-second-publish.log](docs/evidence/duplicate-handling/producer-duplicate/producer-second-publish.log)).
+
+![Producer terminal: the same event_id published twice](docs/evidence/duplicate-handling/producer-duplicate/producer-sends-twice.png)
+
+### The worker detects the duplicate
+
+The first copy is processed and acked. The second copy is detected, the business action is skipped, and the message is acked. Full log: [worker-a.log](docs/evidence/duplicate-handling/producer-duplicate/worker-a.log).
+
+```
+13:22:13 [worker A pid=56896] received event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False
+13:22:13 [worker A pid=56896] processed event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 item_id=item-14 quantity=1
+13:22:13 [worker A pid=56896] acked event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13
+13:22:17 [worker A pid=56896] received event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False
+13:22:17 [worker A pid=56896] DUPLICATE event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 order_id=50 redelivered=False, skipping business action
+13:22:17 [worker A pid=56896] acked event_id=5f0c1e2a-7b3d-4c8e-9a41-0d2e6b7f8a13 (duplicate)
+```
+
+![Worker A terminal: first copy processed, second copy logged as DUPLICATE and skipped](docs/evidence/duplicate-handling/producer-duplicate/worker-detects-duplicate.png)
+
+For this event, the log has one `processed` line and one `DUPLICATE` line.
+
+Both copies arrived with `redelivered=False`. The broker had never delivered either one before, so the flag could not have flagged the second copy. Only the application-level `event_id` can.
+
+### Limitation of the in-memory set
+
+The set lives inside one worker process, so it protects against duplicates only when the same worker sees the same `event_id` again. It does not catch:
+
+- two copies of an event that are delivered to different workers,
+- an event that A processed and then crashed before acking, when it is redelivered to B (B's set is empty),
+- a duplicate that arrives after the worker restarted, because the set is lost.
+
+To cover those cases, the record of processed events has to be shared and durable, for example a file with a lock or a database table with a unique constraint on `event_id`, written in the same transaction as the business action.
+
