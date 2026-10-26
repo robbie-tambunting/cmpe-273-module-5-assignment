@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+
+# local state created by workers (processed-event store)
+*.state
+processed_events*
+
+# scratch experiments
+scratch/
